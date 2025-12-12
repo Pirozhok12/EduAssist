@@ -17,8 +17,9 @@ qt_add_qml_module(appEduAssist
     VERSION 1.0
     QML_FILES
         Main.qml
-        coursemanager.cpp
-        coursemanager.h
+        SOURCES bd.h bd.cpp
+
+
 
 )
 

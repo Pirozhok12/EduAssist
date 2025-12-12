@@ -4,7 +4,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QDebug>
-#include "CourseManager.h"
+
 
 
 int main(int argc, char *argv[])
@@ -21,8 +21,7 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
     engine.loadFromModule("EduAssist", "Main");
 
-    CourseManager courseManager;
-    engine.rootContext()->setContextProperty("courseManager", &courseManager);
+
 
 
     return app.exec();
