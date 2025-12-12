@@ -8,7 +8,8 @@ ApplicationWindow {
     height: 550
     title: "Управление курсами"
 
-    property var courses: []
+
+    property var courses: courseManager.courses
     property int selectedCourse: -1
     property int selectedSubject: -1
 
@@ -79,29 +80,15 @@ ApplicationWindow {
             onClicked: {
                 var text = inputField.text.trim();
                 if (selectedSubject !== -1) {
-                    // Добавляем задание
-                    if (!courses[selectedCourse].subjects[selectedSubject].tasks) {
-                        courses[selectedCourse].subjects[selectedSubject].tasks = [];
-                    }
-                    courses[selectedCourse].subjects[selectedSubject].tasks.push({
-                        name: text,
-                        grade: "",
-                        date: ""
-                    });
+                    // Добавляем задание через C++
+                    courseManager.addTask(selectedCourse, selectedSubject, text);
                 } else if (selectedCourse !== -1) {
-                    // Добавляем предмет
-                    courses[selectedCourse].subjects.push({
-                        name: text,
-                        tasks: []
-                    });
+                    // Добавляем предмет через C++
+                    courseManager.addSubject(selectedCourse, text);
                 } else {
-                    // Добавляем курс
-                    courses.push({
-                        name: text,
-                        subjects: []
-                    });
+                    // Добавляем курс через C++
+                    courseManager.addCourse(text);
                 }
-                courses = courses;
                 inputField.text = "";
             }
         }
@@ -133,14 +120,11 @@ ApplicationWindow {
 
         model: {
             if (selectedSubject !== -1) {
-                // Задания
                 var subject = courses[selectedCourse].subjects[selectedSubject];
                 return subject.tasks ? subject.tasks.length : 0;
             } else if (selectedCourse !== -1) {
-                // Предметы
                 return courses[selectedCourse].subjects.length;
             } else {
-                // Курсы
                 return courses.length;
             }
         }
@@ -156,7 +140,6 @@ ApplicationWindow {
 
             property bool isTask: selectedSubject !== -1
 
-            // Для курсов и предметов - обычная кнопка
             Rectangle {
                 visible: !isTask
                 anchors.fill: parent
@@ -172,10 +155,8 @@ ApplicationWindow {
                         width: parent.width - arrow.width - 10
                         text: {
                             if (selectedCourse !== -1) {
-                                // Предметы
                                 return courses[selectedCourse].subjects[index].name;
                             } else {
-                                // Курсы
                                 var course = courses[index];
                                 var subjectCount = course.subjects.length;
                                 var taskCount = 0;
@@ -205,24 +186,20 @@ ApplicationWindow {
                     hoverEnabled: true
                     onClicked: {
                         if (selectedCourse !== -1) {
-                            // Нажатие на предмет - переходим к заданиям
                             selectedSubject = index;
                         } else {
-                            // Нажатие на курс - переходим к предметам
                             selectedCourse = index;
                         }
                     }
                 }
             }
 
-            // Для заданий - редактируемые поля
             Row {
                 visible: isTask
                 anchors.fill: parent
                 anchors.margins: 10
                 spacing: 10
 
-                // Название задания
                 Column {
                     width: parent.width - gradeField.width - dateField.width - 20
                     anchors.verticalCenter: parent.verticalCenter
@@ -235,7 +212,6 @@ ApplicationWindow {
                     }
                 }
 
-                // Поле оценки
                 TextField {
                     id: gradeField
                     width: 80
@@ -245,21 +221,11 @@ ApplicationWindow {
                     selectByMouse: true
 
                     onEditingFinished: {
-                        if (selectedSubject !== -1) {
-                            courses[selectedCourse].subjects[selectedSubject].tasks[index].grade = text;
-                            courses = courses;
-                        }
-                    }
-
-                    onFocusChanged: {
-                        if (!focus) {
-                            courses[selectedCourse].subjects[selectedSubject].tasks[index].grade = text;
-                            courses = courses;
-                        }
+                        // Сохраняем через C++
+                        courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
                     }
                 }
 
-                // Поле даты
                 TextField {
                     id: dateField
                     width: 120
@@ -269,17 +235,8 @@ ApplicationWindow {
                     selectByMouse: true
 
                     onEditingFinished: {
-                        if (selectedSubject !== -1) {
-                            courses[selectedCourse].subjects[selectedSubject].tasks[index].date = text;
-                            courses = courses;
-                        }
-                    }
-
-                    onFocusChanged: {
-                        if (!focus) {
-                            courses[selectedCourse].subjects[selectedSubject].tasks[index].date = text;
-                            courses = courses;
-                        }
+                        // Сохраняем через C++
+                        courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
                     }
                 }
             }

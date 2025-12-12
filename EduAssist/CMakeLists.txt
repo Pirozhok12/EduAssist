@@ -20,6 +20,7 @@ qt_add_qml_module(appEduAssist
         QML_FILES
         QML_FILES
         RESOURCES resource.qrc
+        SOURCES coursemanager.h coursemanager.cpp
 )
 
 qt_add_resources(appEduAssist "resource"
