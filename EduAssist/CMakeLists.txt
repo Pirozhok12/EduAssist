@@ -17,15 +17,8 @@ qt_add_qml_module(appEduAssist
     VERSION 1.0
     QML_FILES
         Main.qml
-        QML_FILES
-        QML_FILES
-        RESOURCES resource.qrc
-        SOURCES coursemanager.h coursemanager.cpp
-)
-
-qt_add_resources(appEduAssist "resource"
-    PREFIX "/"
-    FILES
+        coursemanager.cpp
+        coursemanager.h
 
 )
 
