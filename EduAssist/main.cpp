@@ -1,5 +1,9 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
+#include <QQuickItem>
+#include <QDebug>
+
 
 int main(int argc, char *argv[])
 {
@@ -13,6 +17,7 @@ int main(int argc, char *argv[])
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
     engine.loadFromModule("EduAssist", "Main");
+
 
     return app.exec();
 }

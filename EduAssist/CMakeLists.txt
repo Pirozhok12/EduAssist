@@ -17,7 +17,17 @@ qt_add_qml_module(appEduAssist
     VERSION 1.0
     QML_FILES
         Main.qml
+        QML_FILES
+        QML_FILES
+        RESOURCES resource.qrc
 )
+
+qt_add_resources(appEduAssist "resource"
+    PREFIX "/"
+    FILES
+
+)
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
