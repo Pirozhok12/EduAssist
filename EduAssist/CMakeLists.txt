@@ -4,12 +4,14 @@ project(EduAssist VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Sql)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appEduAssist
     main.cpp
+    databasemanager.h
+    databasemanager.cpp
 )
 
 qt_add_qml_module(appEduAssist
@@ -21,6 +23,7 @@ qt_add_qml_module(appEduAssist
         QML_FILES
         RESOURCES resource.qrc
         SOURCES coursemanager.h coursemanager.cpp
+        SOURCES databasemanager.h databasemanager.cpp
 )
 
 qt_add_resources(appEduAssist "resource"
@@ -41,8 +44,10 @@ set_target_properties(appEduAssist PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appEduAssist
-    PRIVATE Qt6::Quick
+target_link_libraries(appEduAssist PRIVATE
+    Qt6::Core
+    Qt6::Quick
+    Qt6::Sql
 )
 
 include(GNUInstallDirs)

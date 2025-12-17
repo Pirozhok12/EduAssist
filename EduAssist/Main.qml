@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 ApplicationWindow {
     id: root
@@ -7,7 +8,6 @@ ApplicationWindow {
     width: 700
     height: 550
     title: "Управление курсами"
-
 
     property var courses: courseManager.courses
     property int selectedCourse: -1
@@ -140,6 +140,7 @@ ApplicationWindow {
 
             property bool isTask: selectedSubject !== -1
 
+            // Для курсов и предметов
             Rectangle {
                 visible: !isTask
                 anchors.fill: parent
@@ -152,7 +153,8 @@ ApplicationWindow {
                     spacing: 10
 
                     Label {
-                        width: parent.width - arrow.width - 10
+                        width: parent.width - arrow.width - deleteBtn.width - 20
+                        anchors.verticalCenter: parent.verticalCenter
                         text: {
                             if (selectedCourse !== -1) {
                                 return courses[selectedCourse].subjects[index].name;
@@ -172,17 +174,46 @@ ApplicationWindow {
                         elide: Text.ElideRight
                     }
 
+                    Button {
+                        id: deleteBtn
+                        text: "×"
+                        width: 30
+                        height: 30
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: 20
+                        font.bold: true
+
+                        background: Rectangle {
+                            color: deleteBtn.hovered ? "#ffcccc" : "#f0f0f0"
+                            radius: 4
+                            border.color: "#ff0000"
+                            border.width: 1
+                        }
+
+                        onClicked: {
+                            if (selectedCourse !== -1) {
+                                // Удаляем предмет
+                                courseManager.removeSubject(selectedCourse, index);
+                            } else {
+                                // Удаляем курс
+                                courseManager.removeCourse(index);
+                            }
+                        }
+                    }
+
                     Label {
                         id: arrow
                         text: "›"
                         font.pixelSize: 18
                         color: "#888"
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
                 MouseArea {
                     id: mouseArea
                     anchors.fill: parent
+                    anchors.rightMargin: deleteBtn.width + arrow.width + 20
                     hoverEnabled: true
                     onClicked: {
                         if (selectedCourse !== -1) {
@@ -194,6 +225,7 @@ ApplicationWindow {
                 }
             }
 
+            // Для заданий
             Row {
                 visible: isTask
                 anchors.fill: parent
@@ -201,7 +233,7 @@ ApplicationWindow {
                 spacing: 10
 
                 Column {
-                    width: parent.width - gradeField.width - dateField.width - 20
+                    width: parent.width - gradeField.width - dateField.width - taskDeleteBtn.width - 30
                     anchors.verticalCenter: parent.verticalCenter
 
                     Label {
@@ -221,7 +253,6 @@ ApplicationWindow {
                     selectByMouse: true
 
                     onEditingFinished: {
-                        // Сохраняем через C++
                         courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
                     }
                 }
@@ -235,8 +266,28 @@ ApplicationWindow {
                     selectByMouse: true
 
                     onEditingFinished: {
-                        // Сохраняем через C++
                         courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
+                    }
+                }
+
+                Button {
+                    id: taskDeleteBtn
+                    text: "×"
+                    width: 30
+                    height: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.pixelSize: 20
+                    font.bold: true
+
+                    background: Rectangle {
+                        color: taskDeleteBtn.hovered ? "#ffcccc" : "#f0f0f0"
+                        radius: 4
+                        border.color: "#ff0000"
+                        border.width: 1
+                    }
+
+                    onClicked: {
+                        courseManager.removeTask(selectedCourse, selectedSubject, index);
                     }
                 }
             }
