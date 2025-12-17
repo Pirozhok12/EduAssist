@@ -17,11 +17,11 @@ bool DatabaseManager::initDatabase(const QString &dbPath)
     db.setDatabaseName(dbPath);
 
     if (!db.open()) {
-        qDebug() << "Ошибка открытия БД:" << db.lastError().text();
+        qDebug() << "Помилка відкриття БД:" << db.lastError().text();
         return false;
     }
 
-    qDebug() << "База данных успешно открыта";
+    qDebug() << "База даних успішно відкрита";
     return createTables();
 }
 
@@ -31,14 +31,14 @@ bool DatabaseManager::createTables()
 
     // Включаем поддержку внешних ключей
     if (!query.exec("PRAGMA foreign_keys = ON")) {
-        qDebug() << "Ошибка включения foreign keys:" << query.lastError().text();
+        qDebug() << "Помилка включення foreign keys:" << query.lastError().text();
     }
 
     // Таблица курсов
     if (!query.exec("CREATE TABLE IF NOT EXISTS courses ("
                     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                     "name TEXT NOT NULL UNIQUE)")) {
-        qDebug() << "Ошибка создания таблицы courses:" << query.lastError().text();
+        qDebug() << "Помилка створення таблиці courses:" << query.lastError().text();
         return false;
     }
 
@@ -48,7 +48,7 @@ bool DatabaseManager::createTables()
                     "course_id INTEGER NOT NULL,"
                     "name TEXT NOT NULL,"
                     "FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE)")) {
-        qDebug() << "Ошибка создания таблицы subjects:" << query.lastError().text();
+        qDebug() << "Помилка створення таблиці subjects:" << query.lastError().text();
         return false;
     }
 
@@ -61,31 +61,33 @@ bool DatabaseManager::createTables()
         columns << checkQuery.value(1).toString();
     }
 
-    qDebug() << "Существующие колонки в assignments:" << columns;
+    qDebug() << "Існуючі колонки в assignments:" << columns;
 
     // Если таблица существует, но у неё неправильная структура, пересоздаём её
-    if (columns.size() > 0 && !columns.contains("name")) {
-        qDebug() << "Старая структура таблицы assignments обнаружена. Пересоздаём...";
+    if (columns.size() > 0 && (!columns.contains("name") || !columns.contains("completed") || !columns.contains("max_grade"))) {
+        qDebug() << "Стара структура таблиці assignments виявлена. Перестворюємо...";
 
         // Удаляем старую таблицу
         if (!query.exec("DROP TABLE IF EXISTS assignments")) {
-            qDebug() << "Ошибка удаления старой таблицы assignments:" << query.lastError().text();
+            qDebug() << "Помилка видалення старої таблиці assignments:" << query.lastError().text();
         }
     }
 
-    // Таблица заданий с полем name
+    // Таблица заданий с полями name, completed, max_grade
     if (!query.exec("CREATE TABLE IF NOT EXISTS assignments ("
                     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                     "subject_id INTEGER NOT NULL,"
                     "name TEXT NOT NULL,"
                     "grade TEXT,"
+                    "max_grade TEXT,"
                     "date TEXT,"
+                    "completed INTEGER DEFAULT 0,"
                     "FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE)")) {
-        qDebug() << "Ошибка создания таблицы assignments:" << query.lastError().text();
+        qDebug() << "Помилка створення таблиці assignments:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Таблицы успешно созданы";
+    qDebug() << "Таблиці успішно створені";
     return true;
 }
 
@@ -97,11 +99,11 @@ bool DatabaseManager::addCourse(const QString &courseName)
     query.addBindValue(courseName);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка добавления курса:" << query.lastError().text();
+        qDebug() << "Помилка додавання курсу:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Курс добавлен:" << courseName;
+    qDebug() << "Курс додано:" << courseName;
     return true;
 }
 
@@ -127,11 +129,11 @@ bool DatabaseManager::deleteCourse(int courseId)
     query.addBindValue(courseId);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка удаления курса:" << query.lastError().text();
+        qDebug() << "Помилка видалення курсу:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Курс удален, ID:" << courseId;
+    qDebug() << "Курс видалено, ID:" << courseId;
     return true;
 }
 
@@ -144,11 +146,11 @@ bool DatabaseManager::addSubject(int courseId, const QString &subjectName)
     query.addBindValue(subjectName);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка добавления предмета:" << query.lastError().text();
+        qDebug() << "Помилка додавання предмету:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Предмет добавлен:" << subjectName;
+    qDebug() << "Предмет додано:" << subjectName;
     return true;
 }
 
@@ -178,36 +180,37 @@ bool DatabaseManager::deleteSubject(int subjectId)
     query.addBindValue(subjectId);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка удаления предмета:" << query.lastError().text();
+        qDebug() << "Помилка видалення предмету:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Предмет удален, ID:" << subjectId;
+    qDebug() << "Предмет видалено, ID:" << subjectId;
     return true;
 }
 
 // ЗАДАНИЯ
-bool DatabaseManager::addAssignment(int subjectId, const QString &name, const QString &grade, const QString &date)
+bool DatabaseManager::addAssignment(int subjectId, const QString &name, const QString &grade, const QString &maxGrade, const QString &date, bool completed)
 {
     QSqlQuery query(db);
 
-    // Пробуем альтернативный способ - через exec с форматированием
-    QString queryStr = QString("INSERT INTO assignments (subject_id, name, grade, date) VALUES (%1, '%2', '%3', '%4')")
+    // Используем прямой exec с форматированием
+    QString queryStr = QString("INSERT INTO assignments (subject_id, name, grade, max_grade, date, completed) VALUES (%1, '%2', '%3', '%4', '%5', %6)")
                            .arg(subjectId)
                            .arg(name)
                            .arg(grade)
-                           .arg(date);
+                           .arg(maxGrade)
+                           .arg(date)
+                           .arg(completed ? 1 : 0);
 
-    qDebug() << "Выполняем запрос:" << queryStr;
+    qDebug() << "Виконуємо запит:" << queryStr;
 
     if (!query.exec(queryStr)) {
-        qDebug() << "Ошибка добавления задания:" << query.lastError().text();
-        qDebug() << "Код ошибки:" << query.lastError().nativeErrorCode();
-        qDebug() << "Subject ID:" << subjectId << "Name:" << name << "Grade:" << grade << "Date:" << date;
+        qDebug() << "Помилка додавання завдання:" << query.lastError().text();
+        qDebug() << "Код помилки:" << query.lastError().nativeErrorCode();
         return false;
     }
 
-    qDebug() << "Задание добавлено:" << name;
+    qDebug() << "Завдання додано:" << name;
     return true;
 }
 
@@ -215,7 +218,7 @@ QList<QVariantMap> DatabaseManager::getAssignmentsBySubject(int subjectId)
 {
     QList<QVariantMap> assignments;
     QSqlQuery query;
-    query.prepare("SELECT id, name, grade, date FROM assignments WHERE subject_id = ? ORDER BY id");
+    query.prepare("SELECT id, name, grade, max_grade, date, completed FROM assignments WHERE subject_id = ? ORDER BY id");
     query.addBindValue(subjectId);
 
     if (query.exec()) {
@@ -224,7 +227,9 @@ QList<QVariantMap> DatabaseManager::getAssignmentsBySubject(int subjectId)
             assignment["id"] = query.value(0).toInt();
             assignment["name"] = query.value(1).toString();
             assignment["grade"] = query.value(2).toString();
-            assignment["date"] = query.value(3).toString();
+            assignment["max_grade"] = query.value(3).toString();
+            assignment["date"] = query.value(4).toString();
+            assignment["completed"] = query.value(5).toInt() == 1;
             assignments.append(assignment);
         }
     }
@@ -232,21 +237,23 @@ QList<QVariantMap> DatabaseManager::getAssignmentsBySubject(int subjectId)
     return assignments;
 }
 
-bool DatabaseManager::updateAssignment(int assignmentId, const QString &name, const QString &grade, const QString &date)
+bool DatabaseManager::updateAssignment(int assignmentId, const QString &name, const QString &grade, const QString &maxGrade, const QString &date, bool completed)
 {
     QSqlQuery query;
-    query.prepare("UPDATE assignments SET name = ?, grade = ?, date = ? WHERE id = ?");
+    query.prepare("UPDATE assignments SET name = ?, grade = ?, max_grade = ?, date = ?, completed = ? WHERE id = ?");
     query.addBindValue(name);
     query.addBindValue(grade);
+    query.addBindValue(maxGrade);
     query.addBindValue(date);
+    query.addBindValue(completed ? 1 : 0);
     query.addBindValue(assignmentId);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка обновления задания:" << query.lastError().text();
+        qDebug() << "Помилка оновлення завдання:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Задание обновлено, ID:" << assignmentId;
+    qDebug() << "Завдання оновлено, ID:" << assignmentId;
     return true;
 }
 
@@ -257,10 +264,10 @@ bool DatabaseManager::deleteAssignment(int assignmentId)
     query.addBindValue(assignmentId);
 
     if (!query.exec()) {
-        qDebug() << "Ошибка удаления задания:" << query.lastError().text();
+        qDebug() << "Помилка видалення завдання:" << query.lastError().text();
         return false;
     }
 
-    qDebug() << "Задание удалено, ID:" << assignmentId;
+    qDebug() << "Завдання видалено, ID:" << assignmentId;
     return true;
 }

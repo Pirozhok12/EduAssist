@@ -15,7 +15,7 @@ QVariantList CourseManager::courses() const
 bool CourseManager::initDatabase(const QString &dbPath)
 {
     if (!m_dbManager->initDatabase(dbPath)) {
-        qDebug() << "Ошибка инициализации БД";
+        qDebug() << "Помилка ініціалізації БД";
         return false;
     }
 
@@ -57,7 +57,9 @@ void CourseManager::loadDataFromDatabase()
                 task["id"] = dbAssignment["id"];
                 task["name"] = dbAssignment["name"].toString();
                 task["grade"] = dbAssignment["grade"].toString();
+                task["max_grade"] = dbAssignment["max_grade"].toString();
                 task["date"] = dbAssignment["date"].toString();
+                task["completed"] = dbAssignment["completed"].toBool();
 
                 tasks.append(task);
             }
@@ -131,7 +133,7 @@ void CourseManager::addSubject(int courseIndex, const QString &name)
 {
     int courseId = getCourseIdByIndex(courseIndex);
     if (courseId == -1) {
-        qDebug() << "Неверный индекс курса:" << courseIndex;
+        qDebug() << "Невірний індекс курсу:" << courseIndex;
         return;
     }
 
@@ -144,18 +146,18 @@ void CourseManager::addTask(int courseIndex, int subjectIndex, const QString &na
 {
     int subjectId = getSubjectIdByIndex(courseIndex, subjectIndex);
     if (subjectId == -1) {
-        qDebug() << "Неверный индекс предмета. Курс:" << courseIndex << "Предмет:" << subjectIndex;
+        qDebug() << "Невірний індекс предмету. Курс:" << courseIndex << "Предмет:" << subjectIndex;
         return;
     }
 
-    qDebug() << "Попытка добавить задание:" << name << "в предмет с ID:" << subjectId;
+    qDebug() << "Спроба додати завдання:" << name << "до предмету з ID:" << subjectId;
 
-    // ВАЖНО: передаем пустые строки (не NULL) для grade и date
-    if (m_dbManager->addAssignment(subjectId, name, "", "")) {
-        qDebug() << "Задание успешно добавлено, перезагружаем данные";
+    // Додаємо завдання з порожніми значеннями та completed=false
+    if (m_dbManager->addAssignment(subjectId, name, "", "", "", false)) {
+        qDebug() << "Завдання успішно додано, перезавантажуємо дані";
         rebuildCoursesFromDatabase();
     } else {
-        qDebug() << "Не удалось добавить задание";
+        qDebug() << "Не вдалося додати завдання";
     }
 }
 
@@ -163,7 +165,7 @@ void CourseManager::updateTaskGrade(int courseIndex, int subjectIndex, int taskI
 {
     int taskId = getTaskIdByIndex(courseIndex, subjectIndex, taskIndex);
     if (taskId == -1) {
-        qDebug() << "Неверный индекс задания";
+        qDebug() << "Невірний індекс завдання";
         return;
     }
 
@@ -175,11 +177,45 @@ void CourseManager::updateTaskGrade(int courseIndex, int subjectIndex, int taskI
     QVariantMap task = tasks[taskIndex].toMap();
 
     QString currentName = task["name"].toString();
+    QString currentMaxGrade = task["max_grade"].toString();
     QString currentDate = task["date"].toString();
+    bool currentCompleted = task["completed"].toBool();
 
-    if (m_dbManager->updateAssignment(taskId, currentName, grade, currentDate)) {
+    if (m_dbManager->updateAssignment(taskId, currentName, grade, currentMaxGrade, currentDate, currentCompleted)) {
         // Обновляем локально без полной перезагрузки
         task["grade"] = grade;
+        tasks[taskIndex] = task;
+        subject["tasks"] = tasks;
+        subjects[subjectIndex] = subject;
+        course["subjects"] = subjects;
+        m_courses[courseIndex] = course;
+        emit coursesChanged();
+    }
+}
+
+void CourseManager::updateTaskMaxGrade(int courseIndex, int subjectIndex, int taskIndex, const QString &maxGrade)
+{
+    int taskId = getTaskIdByIndex(courseIndex, subjectIndex, taskIndex);
+    if (taskId == -1) {
+        qDebug() << "Невірний індекс завдання";
+        return;
+    }
+
+    // Получаем текущие данные задания
+    QVariantMap course = m_courses[courseIndex].toMap();
+    QVariantList subjects = course["subjects"].toList();
+    QVariantMap subject = subjects[subjectIndex].toMap();
+    QVariantList tasks = subject["tasks"].toList();
+    QVariantMap task = tasks[taskIndex].toMap();
+
+    QString currentName = task["name"].toString();
+    QString currentGrade = task["grade"].toString();
+    QString currentDate = task["date"].toString();
+    bool currentCompleted = task["completed"].toBool();
+
+    if (m_dbManager->updateAssignment(taskId, currentName, currentGrade, maxGrade, currentDate, currentCompleted)) {
+        // Обновляем локально без полной перезагрузки
+        task["max_grade"] = maxGrade;
         tasks[taskIndex] = task;
         subject["tasks"] = tasks;
         subjects[subjectIndex] = subject;
@@ -193,7 +229,7 @@ void CourseManager::updateTaskDate(int courseIndex, int subjectIndex, int taskIn
 {
     int taskId = getTaskIdByIndex(courseIndex, subjectIndex, taskIndex);
     if (taskId == -1) {
-        qDebug() << "Неверный индекс задания";
+        qDebug() << "Невірний індекс завдання";
         return;
     }
 
@@ -206,10 +242,44 @@ void CourseManager::updateTaskDate(int courseIndex, int subjectIndex, int taskIn
 
     QString currentName = task["name"].toString();
     QString currentGrade = task["grade"].toString();
+    QString currentMaxGrade = task["max_grade"].toString();
+    bool currentCompleted = task["completed"].toBool();
 
-    if (m_dbManager->updateAssignment(taskId, currentName, currentGrade, date)) {
+    if (m_dbManager->updateAssignment(taskId, currentName, currentGrade, currentMaxGrade, date, currentCompleted)) {
         // Обновляем локально без полной перезагрузки
         task["date"] = date;
+        tasks[taskIndex] = task;
+        subject["tasks"] = tasks;
+        subjects[subjectIndex] = subject;
+        course["subjects"] = subjects;
+        m_courses[courseIndex] = course;
+        emit coursesChanged();
+    }
+}
+
+void CourseManager::updateTaskCompleted(int courseIndex, int subjectIndex, int taskIndex, bool completed)
+{
+    int taskId = getTaskIdByIndex(courseIndex, subjectIndex, taskIndex);
+    if (taskId == -1) {
+        qDebug() << "Невірний індекс завдання";
+        return;
+    }
+
+    // Получаем текущие данные задания
+    QVariantMap course = m_courses[courseIndex].toMap();
+    QVariantList subjects = course["subjects"].toList();
+    QVariantMap subject = subjects[subjectIndex].toMap();
+    QVariantList tasks = subject["tasks"].toList();
+    QVariantMap task = tasks[taskIndex].toMap();
+
+    QString currentName = task["name"].toString();
+    QString currentGrade = task["grade"].toString();
+    QString currentMaxGrade = task["max_grade"].toString();
+    QString currentDate = task["date"].toString();
+
+    if (m_dbManager->updateAssignment(taskId, currentName, currentGrade, currentMaxGrade, currentDate, completed)) {
+        // Обновляем локально без полной перезагрузки
+        task["completed"] = completed;
         tasks[taskIndex] = task;
         subject["tasks"] = tasks;
         subjects[subjectIndex] = subject;
@@ -223,7 +293,7 @@ void CourseManager::removeCourse(int courseIndex)
 {
     int courseId = getCourseIdByIndex(courseIndex);
     if (courseId == -1) {
-        qDebug() << "Неверный индекс курса:" << courseIndex;
+        qDebug() << "Невірний індекс курсу:" << courseIndex;
         return;
     }
 
@@ -236,7 +306,7 @@ void CourseManager::removeSubject(int courseIndex, int subjectIndex)
 {
     int subjectId = getSubjectIdByIndex(courseIndex, subjectIndex);
     if (subjectId == -1) {
-        qDebug() << "Неверный индекс предмета";
+        qDebug() << "Невірний індекс предмету";
         return;
     }
 
@@ -249,7 +319,7 @@ void CourseManager::removeTask(int courseIndex, int subjectIndex, int taskIndex)
 {
     int taskId = getTaskIdByIndex(courseIndex, subjectIndex, taskIndex);
     if (taskId == -1) {
-        qDebug() << "Неверный индекс задания";
+        qDebug() << "Невірний індекс завдання";
         return;
     }
 

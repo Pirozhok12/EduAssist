@@ -5,13 +5,43 @@ import QtQuick.Layouts 1.15
 ApplicationWindow {
     id: root
     visible: true
-    width: 700
-    height: 550
-    title: "Управление курсами"
+    width: 850
+    height: 600
+    title: "Управління завданнями"
 
     property var courses: courseManager.courses
     property int selectedCourse: -1
     property int selectedSubject: -1
+
+    // Функція для підрахунку прогресу
+    function calculateProgress(tasks) {
+        if (!tasks || tasks.length === 0) return 0;
+        var completed = 0;
+        for (var i = 0; i < tasks.length; i++) {
+            if (tasks[i].completed) completed++;
+        }
+        return completed / tasks.length;
+    }
+
+    // Функція для підрахунку прогресу всього курсу
+    function calculateCourseProgress(course) {
+        var totalTasks = 0;
+        var completedTasks = 0;
+
+        if (!course.subjects) return 0;
+
+        for (var i = 0; i < course.subjects.length; i++) {
+            var subject = course.subjects[i];
+            if (subject.tasks) {
+                totalTasks += subject.tasks.length;
+                for (var j = 0; j < subject.tasks.length; j++) {
+                    if (subject.tasks[j].completed) completedTasks++;
+                }
+            }
+        }
+
+        return totalTasks > 0 ? completedTasks / totalTasks : 0;
+    }
 
     // Заголовок
     Row {
@@ -44,11 +74,12 @@ ApplicationWindow {
                 } else if (selectedCourse !== -1) {
                     return courses[selectedCourse].name;
                 } else {
-                    return "Курсы";
+                    return "Курси";
                 }
             }
             font.pixelSize: 20
             font.bold: true
+
         }
     }
 
@@ -67,26 +98,23 @@ ApplicationWindow {
             id: inputField
             width: parent.width - addBtn.width - 10
             placeholderText: {
-                if (selectedSubject !== -1) return "Название задания";
-                if (selectedCourse !== -1) return "Название предмета";
-                return "Название курса";
+                if (selectedSubject !== -1) return "Назва завдання";
+                if (selectedCourse !== -1) return "Назва предмету";
+                return "Назва курсу";
             }
         }
 
         Button {
             id: addBtn
-            text: "Добавить"
+            text: "Додати"
             enabled: inputField.text.trim() !== ""
             onClicked: {
                 var text = inputField.text.trim();
                 if (selectedSubject !== -1) {
-                    // Добавляем задание через C++
                     courseManager.addTask(selectedCourse, selectedSubject, text);
                 } else if (selectedCourse !== -1) {
-                    // Добавляем предмет через C++
                     courseManager.addSubject(selectedCourse, text);
                 } else {
-                    // Добавляем курс через C++
                     courseManager.addCourse(text);
                 }
                 inputField.text = "";
@@ -132,7 +160,7 @@ ApplicationWindow {
         delegate: Rectangle {
             id: delegateItem
             width: listView.width
-            height: selectedSubject !== -1 ? 70 : 50
+            height: selectedSubject !== -1 ? 90 : 70
             color: "white"
             border.color: "#d0d0d0"
             border.width: 1
@@ -141,20 +169,21 @@ ApplicationWindow {
             property bool isTask: selectedSubject !== -1
 
             // Для курсов и предметов
-            Rectangle {
+            Column {
                 visible: !isTask
                 anchors.fill: parent
-                color: mouseArea.containsMouse ? "#f0f0f0" : "transparent"
-                radius: 4
+                anchors.margins: 10
+                spacing: 5
 
                 Row {
-                    anchors.fill: parent
-                    anchors.margins: 10
+                    width: parent.width
+                    height: 30
                     spacing: 10
 
                     Label {
                         width: parent.width - arrow.width - deleteBtn.width - 20
                         anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 10
                         text: {
                             if (selectedCourse !== -1) {
                                 return courses[selectedCourse].subjects[index].name;
@@ -167,36 +196,38 @@ ApplicationWindow {
                                         taskCount += course.subjects[i].tasks.length;
                                     }
                                 }
-                                return course.name + " (Предметов: " + subjectCount + ", Заданий: " + taskCount + ")";
+                                return course.name + " (Предметів: " + subjectCount + ", Завдань: " + taskCount + ")";
                             }
                         }
                         font.pixelSize: 14
                         elide: Text.ElideRight
+                        x: 10
                     }
 
                     Button {
                         id: deleteBtn
                         text: "×"
-                        width: 30
-                        height: 30
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.pixelSize: 20
+                        width: 22
+                        height: 22
+
+                        anchors.top: parent.top
+                        anchors.topMargin: 20
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+
+                        font.pixelSize: 14
                         font.bold: true
 
                         background: Rectangle {
-                            color: deleteBtn.hovered ? "#ffcccc" : "#f0f0f0"
-                            radius: 4
-                            border.color: "#ff0000"
-                            border.width: 1
+                            color: deleteBtn.hovered ? "#e6e6e6" : "#f5f5f5"
+                            radius: 3
                         }
 
                         onClicked: {
                             if (selectedCourse !== -1) {
-                                // Удаляем предмет
-                                courseManager.removeSubject(selectedCourse, index);
+                                courseManager.removeSubject(selectedCourse, index)
                             } else {
-                                // Удаляем курс
-                                courseManager.removeCourse(index);
+                                courseManager.removeCourse(index)
                             }
                         }
                     }
@@ -210,8 +241,59 @@ ApplicationWindow {
                     }
                 }
 
+                // Прогресс-бар
+                Row {
+                    width: parent.width
+                    spacing: 10
+
+                    ProgressBar {
+                        width: parent.width - progressLabel.width - 10
+                        value: {
+                            if (selectedCourse !== -1) {
+                                var subject = courses[selectedCourse].subjects[index];
+                                return calculateProgress(subject.tasks);
+                            } else {
+                                return calculateCourseProgress(courses[index]);
+                            }
+                        }
+
+                        background: Rectangle {
+                            implicitHeight: 8
+                            radius: 4
+                            color: "#e0e0e0"
+                        }
+
+                        contentItem: Item {
+                            implicitHeight: 8
+
+                            Rectangle {
+                                width: parent.parent.visualPosition * parent.width
+                                height: parent.height
+                                radius: 4
+                                color: "#4CAF50"
+                            }
+                        }
+                    }
+
+                    Label {
+                        id: progressLabel
+                        text: {
+                            var progress;
+                            if (selectedCourse !== -1) {
+                                var subject = courses[selectedCourse].subjects[index];
+                                progress = calculateProgress(subject.tasks);
+                            } else {
+                                progress = calculateCourseProgress(courses[index]);
+                            }
+                            return Math.round(progress * 100) + "%";
+                        }
+                        font.pixelSize: 12
+                        color: "#666"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
                 MouseArea {
-                    id: mouseArea
                     anchors.fill: parent
                     anchors.rightMargin: deleteBtn.width + arrow.width + 20
                     hoverEnabled: true
@@ -222,72 +304,131 @@ ApplicationWindow {
                             selectedCourse = index;
                         }
                     }
+                    onEntered: delegateItem.color = "#f0f0f0"
+                    onExited: delegateItem.color = "white"
                 }
             }
 
             // Для заданий
-            Row {
+            Column {
                 visible: isTask
                 anchors.fill: parent
                 anchors.margins: 10
-                spacing: 10
+                spacing: 5
 
-                Column {
-                    width: parent.width - gradeField.width - dateField.width - taskDeleteBtn.width - 30
-                    anchors.verticalCenter: parent.verticalCenter
+                Row {
+                    width: parent.width
+                    spacing: 10
+
+                    CheckBox {
+                        id: completedCheckBox
+                        checked: courses[selectedCourse].subjects[selectedSubject].tasks[index].completed
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        onClicked: {
+                            courseManager.updateTaskCompleted(selectedCourse, selectedSubject, index, checked);
+                        }
+                    }
 
                     Label {
-                        width: parent.width
+                        width: parent.width - completedCheckBox.width - taskDeleteBtn.width - 30
+                        anchors.verticalCenter: parent.verticalCenter
                         text: courses[selectedCourse].subjects[selectedSubject].tasks[index].name
                         font.pixelSize: 14
                         elide: Text.ElideRight
+                        font.strikeout: courses[selectedCourse].subjects[selectedSubject].tasks[index].completed
+                    }
+
+                    Button {
+                        id: taskDeleteBtn
+                        text: "×"
+                        width: 30
+                        height: 30
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: 20
+
+                        background: Rectangle {
+                            color: deleteBtn.hovered ? "#e6e6e6" : "#f5f5f5"
+                            radius: 3
+                        }
+
+                        onClicked: {
+                            courseManager.removeTask(selectedCourse, selectedSubject, index);
+                        }
                     }
                 }
 
-                TextField {
-                    id: gradeField
-                    width: 80
-                    anchors.verticalCenter: parent.verticalCenter
-                    placeholderText: "Оценка"
-                    text: courses[selectedCourse].subjects[selectedSubject].tasks[index].grade
-                    selectByMouse: true
+                Row {
+                    width: parent.width
+                    spacing: 10
 
-                    onEditingFinished: {
-                        courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
-                    }
-                }
+                    Column {
+                        width: (parent.width - 20) / 3
+                        spacing: 3
 
-                TextField {
-                    id: dateField
-                    width: 120
-                    anchors.verticalCenter: parent.verticalCenter
-                    placeholderText: "ДД.ММ.ГГГГ"
-                    text: courses[selectedCourse].subjects[selectedSubject].tasks[index].date
-                    selectByMouse: true
+                        Label {
+                            text: "Отримана оцінка:"
+                            font.pixelSize: 10
+                        }
 
-                    onEditingFinished: {
-                        courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
-                    }
-                }
+                        TextField {
+                            id: gradeField
+                            width: parent.width
+                            placeholderText: "0"
+                            text: courses[selectedCourse].subjects[selectedSubject].tasks[index].grade
+                            selectByMouse: true
+                            font.pixelSize: 12
 
-                Button {
-                    id: taskDeleteBtn
-                    text: "×"
-                    width: 30
-                    height: 30
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: 20
-                    font.bold: true
-
-                    background: Rectangle {
-                        color: taskDeleteBtn.hovered ? "#ffcccc" : "#f0f0f0"
-                        radius: 4
-                        border.color: "#ff0000"
-                        border.width: 1
+                            onEditingFinished: {
+                                courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
+                            }
+                        }
                     }
 
-                    onClicked: {
-                        courseManager.removeTask(selectedCourse, selectedSubject, index);
+                    Column {
+                        width: (parent.width - 20) / 3
+                        spacing: 3
+
+                        Label {
+                            text: "Максимальна оцінка:"
+                            font.pixelSize: 10
+                        }
+
+                        TextField {
+                            id: maxGradeField
+                            width: parent.width
+                            placeholderText: "100"
+                            text: courses[selectedCourse].subjects[selectedSubject].tasks[index].max_grade
+                            selectByMouse: true
+                            font.pixelSize: 12
+
+                            onEditingFinished: {
+                                courseManager.updateTaskMaxGrade(selectedCourse, selectedSubject, index, text);
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: (parent.width - 20) / 3
+                        spacing: 3
+
+                        Label {
+                            text: "Dead Line:"
+                            font.pixelSize: 10
+                        }
+
+                        TextField {
+                            id: dateField
+                            width: parent.width
+                            placeholderText: "ДД.ММ.РРРР"
+                            text: courses[selectedCourse].subjects[selectedSubject].tasks[index].date
+                            selectByMouse: true
+                            font.pixelSize: 12
+
+                            onEditingFinished: {
+                                courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
+                            }
+                        }
                     }
                 }
             }

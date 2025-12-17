@@ -18,20 +18,20 @@ public:
 
     bool initDatabase(const QString &dbPath = "courses.db");
 
-    // Курсы
+    // Курси
     bool addCourse(const QString &courseName);
     QList<QVariantMap> getAllCourses();
     bool deleteCourse(int courseId);
 
-    // Предметы
+    // Предмети
     bool addSubject(int courseId, const QString &subjectName);
     QList<QVariantMap> getSubjectsByCourse(int courseId);
     bool deleteSubject(int subjectId);
 
-    // Задания - УБРАНЫ значения по умолчанию из заголовка
-    bool addAssignment(int subjectId, const QString &name, const QString &grade, const QString &date);
+    // Завдання - оновлені сигнатури з max_grade та completed
+    bool addAssignment(int subjectId, const QString &name, const QString &grade, const QString &maxGrade, const QString &date, bool completed);
     QList<QVariantMap> getAssignmentsBySubject(int subjectId);
-    bool updateAssignment(int assignmentId, const QString &name, const QString &grade, const QString &date);
+    bool updateAssignment(int assignmentId, const QString &name, const QString &grade, const QString &maxGrade, const QString &date, bool completed);
     bool deleteAssignment(int assignmentId);
 
 private:
