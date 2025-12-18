@@ -1,3 +1,6 @@
 <RCC>
-    <qresource prefix="/"/>
+    <qresource prefix="/">
+        <file>ContentList.qml</file>
+        <file>DeadlinePanel.qml</file>
+    </qresource>
 </RCC>

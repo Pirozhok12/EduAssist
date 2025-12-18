@@ -18,12 +18,15 @@ qt_add_qml_module(appEduAssist
     URI EduAssist
     VERSION 1.0
     QML_FILES
+        DeadlinePanel.qml
+        ContentList.qml
         Main.qml
         QML_FILES
         QML_FILES
         RESOURCES resource.qrc
         SOURCES coursemanager.h coursemanager.cpp
         SOURCES databasemanager.h databasemanager.cpp
+        RESOURCES
 )
 
 qt_add_resources(appEduAssist "resource"
