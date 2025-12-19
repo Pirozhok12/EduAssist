@@ -20,8 +20,9 @@ qt_add_qml_module(appEduAssist
     QML_FILES
         DeadlinePanel.qml
         ContentList.qml
+        PlayerWindow.qml
+        MusicPlayer.qml
         Main.qml
-        QML_FILES
         QML_FILES
         RESOURCES resource.qrc
         SOURCES coursemanager.h coursemanager.cpp
@@ -32,7 +33,9 @@ qt_add_qml_module(appEduAssist
 qt_add_resources(appEduAssist "resource"
     PREFIX "/"
     FILES
-
+    Maler_Simfoniya_2.mp3
+    Maler_Simfoniya_10.mp3
+    # Mi-bemol_mazhor.mp3
 )
 
 

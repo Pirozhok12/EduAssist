@@ -7,6 +7,8 @@ ApplicationWindow {
     visible: true
     width: 900
     height: 650
+    minimumHeight: 450
+    minimumWidth: 800
     title: "Управління завданнями"
 
     property var courses: courseManager.courses
@@ -25,6 +27,10 @@ ApplicationWindow {
     readonly property color borderColor: "#e2e8f0"
     readonly property color textPrimary: "#1e293b"
     readonly property color textSecondary: "#64748b"
+
+    MusicPlayer {
+        id: musicPlayer
+    }
 
     Component.onCompleted: {
         var xhr = new XMLHttpRequest();
@@ -49,6 +55,8 @@ ApplicationWindow {
         };
         xhr.send();
     }
+
+
 
     function getUpcomingDeadlines() {
         var allTasks = [];
@@ -135,6 +143,49 @@ ApplicationWindow {
         z: 1
     }
 
+    // Кнопка для відкриття плеєра
+    Rectangle {
+        id: playerButton
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 20
+        width: 100
+        height: 40
+        radius: 10
+        z: 2
+
+        property bool hovered: false
+
+        color: hovered ? Qt.darker(root.accentColor, 1.1) : root.accentColor
+
+        Text {
+            text: "Плеєр"
+            color: "white"
+            font.pixelSize: 14
+            font.bold: true
+            anchors.centerIn: parent
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onEntered: playerButton.hovered = true
+            onExited: playerButton.hovered = false
+            onClicked: {
+                var component = Qt.createComponent("PlayerWindow.qml")
+                if (component.status === Component.Ready) {
+                    var window = component.createObject(root, {
+                        "musicPlayer": musicPlayer
+                    })
+                    window.show()
+                } else {
+                    console.log("Error loading component:", component.errorString())
+                }
+            }
+        }
+    }
+
     Column {
         anchors.top: parent.top
         anchors.left: parent.left
@@ -156,7 +207,6 @@ ApplicationWindow {
                 radius: 10
 
                 property bool hovered: false
-
 
                 visible: selectedCourse !== -1 || selectedSubject !== -1
 

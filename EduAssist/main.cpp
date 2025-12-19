@@ -8,10 +8,15 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // Создаем менеджер курсов
+    // Налаштування для Settings (для плеєра)
+    QCoreApplication::setOrganizationName("MyUniversity");
+    QCoreApplication::setOrganizationDomain("univ.example");
+    QCoreApplication::setApplicationName("EduAssist");
+
+    // Створюємо CourseManager
     CourseManager courseManager;
 
-    // Инициализируем БД
+    // Ініціалізуємо БД
     if (!courseManager.initDatabase("courses.db")) {
         qDebug() << "Не удалось инициализировать базу данных";
         return -1;
@@ -19,7 +24,7 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
-    // Регистрируем courseManager в QML
+    // Реєструємо courseManager в QML
     engine.rootContext()->setContextProperty("courseManager", &courseManager);
 
     QObject::connect(

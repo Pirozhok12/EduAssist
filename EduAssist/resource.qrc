@@ -2,5 +2,9 @@
     <qresource prefix="/">
         <file>ContentList.qml</file>
         <file>DeadlinePanel.qml</file>
+        <file>PlayerWindow.qml</file>
+        <file>Maler_Simfoniya_2.mp3</file>
+        <file>Maler_Simfoniya_10.mp3</file>
+        <file>MusicPlayer.qml</file>
     </qresource>
 </RCC>
