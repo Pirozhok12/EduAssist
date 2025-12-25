@@ -25,10 +25,10 @@ ListView {
     function calculateCourseProgress(course) {
         var totalTasks = 0;
         var completedTasks = 0;
-        if (!course.subjects) return 0;
+        if (!course || !course.subjects) return 0;
         for (var i = 0; i < course.subjects.length; i++) {
             var subject = course.subjects[i];
-            if (subject.tasks) {
+            if (subject && subject.tasks) {
                 totalTasks += subject.tasks.length;
                 for (var j = 0; j < subject.tasks.length; j++) {
                     if (subject.tasks[j].completed) completedTasks++;
@@ -39,11 +39,19 @@ ListView {
     }
 
     model: {
-        if (selectedSubject !== -1) {
-            var subject = courses[selectedCourse].subjects[selectedSubject];
-            return subject.tasks ? subject.tasks.length : 0;
+        // Перевірка на валідність даних
+        if (!courses || courses.length === 0) return 0;
+
+        if (selectedSubject !== -1 && selectedCourse !== -1) {
+            if (selectedCourse >= courses.length) return 0;
+            var course = courses[selectedCourse];
+            if (!course || !course.subjects || selectedSubject >= course.subjects.length) return 0;
+            var subject = course.subjects[selectedSubject];
+            return (subject && subject.tasks) ? subject.tasks.length : 0;
         } else if (selectedCourse !== -1) {
-            return courses[selectedCourse].subjects.length;
+            if (selectedCourse >= courses.length) return 0;
+            var c = courses[selectedCourse];
+            return (c && c.subjects) ? c.subjects.length : 0;
         } else {
             return courses.length;
         }
@@ -84,18 +92,27 @@ ListView {
                     anchors.left: parent.left
                     anchors.leftMargin: 8
                     text: {
+                        // Перевірка на валідність даних
                         if (selectedCourse !== -1) {
-                            return courses[selectedCourse].subjects[index].name;
+                            if (!courses || selectedCourse >= courses.length) return "";
+                            var course = courses[selectedCourse];
+                            if (!course || !course.subjects || index >= course.subjects.length) return "";
+                            var subject = course.subjects[index];
+                            return subject ? subject.name : "";
                         } else {
-                            var course = courses[index];
-                            var subjectCount = course.subjects.length;
+                            if (!courses || index >= courses.length) return "";
+                            var c = courses[index];
+                            if (!c) return "";
+                            var subjectCount = (c.subjects) ? c.subjects.length : 0;
                             var taskCount = 0;
-                            for (var i = 0; i < subjectCount; i++) {
-                                if (course.subjects[i].tasks) {
-                                    taskCount += course.subjects[i].tasks.length;
+                            if (c.subjects) {
+                                for (var i = 0; i < subjectCount; i++) {
+                                    if (c.subjects[i] && c.subjects[i].tasks) {
+                                        taskCount += c.subjects[i].tasks.length;
+                                    }
                                 }
                             }
-                            return course.name + " • " + subjectCount + " предметів • " + taskCount + " завдань";
+                            return c.name + " • " + subjectCount + " предметів • " + taskCount + " завдань";
                         }
                     }
                     font.pixelSize: 15
@@ -143,7 +160,6 @@ ListView {
                     font.bold: true
                     color: "#8b5cf6"
                     anchors.verticalCenter: parent.verticalCenter
-
                 }
             }
 
@@ -161,9 +177,13 @@ ListView {
                         width: {
                             var progress;
                             if (selectedCourse !== -1) {
-                                var subject = courses[selectedCourse].subjects[index];
-                                progress = calculateProgress(subject.tasks);
+                                if (!courses || selectedCourse >= courses.length) return 0;
+                                var course = courses[selectedCourse];
+                                if (!course || !course.subjects || index >= course.subjects.length) return 0;
+                                var subject = course.subjects[index];
+                                progress = subject ? calculateProgress(subject.tasks) : 0;
                             } else {
+                                if (!courses || index >= courses.length) return 0;
                                 progress = calculateCourseProgress(courses[index]);
                             }
                             return parent.width * progress;
@@ -187,9 +207,13 @@ ListView {
                     text: {
                         var progress;
                         if (selectedCourse !== -1) {
-                            var subject = courses[selectedCourse].subjects[index];
-                            progress = calculateProgress(subject.tasks);
+                            if (!courses || selectedCourse >= courses.length) return "0%";
+                            var course = courses[selectedCourse];
+                            if (!course || !course.subjects || index >= course.subjects.length) return "0%";
+                            var subject = course.subjects[index];
+                            progress = subject ? calculateProgress(subject.tasks) : 0;
                         } else {
+                            if (!courses || index >= courses.length) return "0%";
                             progress = calculateCourseProgress(courses[index]);
                         }
                         return Math.round(progress * 100) + "%";
@@ -240,10 +264,15 @@ ListView {
 
                 CheckBox {
                     id: completedCheckBox
-                    checked: courses[selectedCourse].subjects[selectedSubject].tasks[index].completed
+                    checked: {
+                        if (!courses || selectedCourse >= courses.length) return false;
+                        var course = courses[selectedCourse];
+                        if (!course || !course.subjects || selectedSubject >= course.subjects.length) return false;
+                        var subject = course.subjects[selectedSubject];
+                        if (!subject || !subject.tasks || index >= subject.tasks.length) return false;
+                        return subject.tasks[index].completed;
+                    }
                     anchors.verticalCenter: parent.verticalCenter
-
-
 
                     onClicked: {
                         courseManager.updateTaskCompleted(selectedCourse, selectedSubject, index, checked);
@@ -253,12 +282,33 @@ ListView {
                 Label {
                     width: parent.width - completedCheckBox.width - taskDeleteBtn.width - 36
                     anchors.verticalCenter: parent.verticalCenter
-                    text: courses[selectedCourse].subjects[selectedSubject].tasks[index].name
+                    text: {
+                        if (!courses || selectedCourse >= courses.length) return "";
+                        var course = courses[selectedCourse];
+                        if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "";
+                        var subject = course.subjects[selectedSubject];
+                        if (!subject || !subject.tasks || index >= subject.tasks.length) return "";
+                        return subject.tasks[index].name || "";
+                    }
                     font.pixelSize: 15
                     font.bold: true
                     elide: Text.ElideRight
-                    font.strikeout: courses[selectedCourse].subjects[selectedSubject].tasks[index].completed
-                    color: courses[selectedCourse].subjects[selectedSubject].tasks[index].completed ? "#94a3b8" : "#1e293b"
+                    font.strikeout: {
+                        if (!courses || selectedCourse >= courses.length) return false;
+                        var course = courses[selectedCourse];
+                        if (!course || !course.subjects || selectedSubject >= course.subjects.length) return false;
+                        var subject = course.subjects[selectedSubject];
+                        if (!subject || !subject.tasks || index >= subject.tasks.length) return false;
+                        return subject.tasks[index].completed;
+                    }
+                    color: {
+                        if (!courses || selectedCourse >= courses.length) return "#1e293b";
+                        var course = courses[selectedCourse];
+                        if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "#1e293b";
+                        var subject = course.subjects[selectedSubject];
+                        if (!subject || !subject.tasks || index >= subject.tasks.length) return "#1e293b";
+                        return subject.tasks[index].completed ? "#94a3b8" : "#1e293b";
+                    }
                 }
 
                 Button {
@@ -270,7 +320,7 @@ ListView {
                     font.pixelSize: 20
 
                     background: Rectangle {
-                        color: deleteBtn.hovered ? "#e6e6e6" : "#f5f5f5"
+                        color: taskDeleteBtn.hovered ? "#e6e6e6" : "#f5f5f5"
                         radius: 3
                     }
 
@@ -306,9 +356,17 @@ ListView {
                         width: parent.width
                         height: 32
                         placeholderText: "0"
-                        text: courses[selectedCourse].subjects[selectedSubject].tasks[index].grade
+                        text: {
+                            if (!courses || selectedCourse >= courses.length) return "";
+                            var course = courses[selectedCourse];
+                            if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "";
+                            var subject = course.subjects[selectedSubject];
+                            if (!subject || !subject.tasks || index >= subject.tasks.length) return "";
+                            return subject.tasks[index].grade || "";
+                        }
                         selectByMouse: true
                         font.pixelSize: 13
+                        validator: RegularExpressionValidator { regularExpression: /^\d*\.?\d*$/ }
 
                         background: Rectangle {
                             color: "#f8fafc"
@@ -318,7 +376,9 @@ ListView {
                         }
 
                         onEditingFinished: {
-                            courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
+                            if (text.trim() !== "") {
+                                courseManager.updateTaskGrade(selectedCourse, selectedSubject, index, text);
+                            }
                         }
                     }
                 }
@@ -337,9 +397,17 @@ ListView {
                         width: parent.width
                         height: 32
                         placeholderText: "100"
-                        text: courses[selectedCourse].subjects[selectedSubject].tasks[index].max_grade
+                        text: {
+                            if (!courses || selectedCourse >= courses.length) return "";
+                            var course = courses[selectedCourse];
+                            if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "";
+                            var subject = course.subjects[selectedSubject];
+                            if (!subject || !subject.tasks || index >= subject.tasks.length) return "";
+                            return subject.tasks[index].max_grade || "";
+                        }
                         selectByMouse: true
                         font.pixelSize: 13
+                        validator: RegularExpressionValidator { regularExpression: /^\d*\.?\d*$/ }
 
                         background: Rectangle {
                             color: "#f8fafc"
@@ -349,7 +417,9 @@ ListView {
                         }
 
                         onEditingFinished: {
-                            courseManager.updateTaskMaxGrade(selectedCourse, selectedSubject, index, text);
+                            if (text.trim() !== "") {
+                                courseManager.updateTaskMaxGrade(selectedCourse, selectedSubject, index, text);
+                            }
                         }
                     }
                 }
@@ -368,9 +438,17 @@ ListView {
                         width: parent.width
                         height: 32
                         placeholderText: "ДД.ММ.РРРР"
-                        text: courses[selectedCourse].subjects[selectedSubject].tasks[index].date
+                        text: {
+                            if (!courses || selectedCourse >= courses.length) return "";
+                            var course = courses[selectedCourse];
+                            if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "";
+                            var subject = course.subjects[selectedSubject];
+                            if (!subject || !subject.tasks || index >= subject.tasks.length) return "";
+                            return subject.tasks[index].date || "";
+                        }
                         selectByMouse: true
                         font.pixelSize: 13
+                        validator: RegularExpressionValidator { regularExpression: /^\d{0,2}\.?\d{0,2}\.?\d{0,4}$/ }
 
                         background: Rectangle {
                             color: "#fef2f2"
@@ -380,7 +458,20 @@ ListView {
                         }
 
                         onEditingFinished: {
-                            courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
+                            var datePattern = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+                            if (text.trim() === "" || datePattern.test(text)) {
+                                courseManager.updateTaskDate(selectedCourse, selectedSubject, index, text);
+                            } else if (text.trim() !== "") {
+                                // Якщо формат неправильний, повертаємо старе значення
+                                text = Qt.binding(function() {
+                                    if (!courses || selectedCourse >= courses.length) return "";
+                                    var course = courses[selectedCourse];
+                                    if (!course || !course.subjects || selectedSubject >= course.subjects.length) return "";
+                                    var subject = course.subjects[selectedSubject];
+                                    if (!subject || !subject.tasks || index >= subject.tasks.length) return "";
+                                    return subject.tasks[index].date || "";
+                                });
+                            }
                         }
                     }
                 }
